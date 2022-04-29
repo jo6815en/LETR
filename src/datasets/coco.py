@@ -15,7 +15,7 @@ class CocoDetection(torchvision.datasets.CocoDetection):
     def __init__(self, img_folder, ann_file, transforms, args):
         super(CocoDetection, self).__init__(img_folder, ann_file)
         self._transforms = transforms
-        self.prepare = ConvertCocoPolysToMask() 
+        self.prepare = ConvertCocoPolysToMask()
         self.args = args
 
     def __getitem__(self, idx):
@@ -38,7 +38,7 @@ class ConvertCocoPolysToMask(object):
         anno = target["annotations"]
 
         anno = [obj for obj in anno]
- 
+
         lines = [obj["line"] for obj in anno]
         lines = torch.as_tensor(lines, dtype=torch.float32).reshape(-1, 4)
 
@@ -52,10 +52,10 @@ class ConvertCocoPolysToMask(object):
 
         target = {}
         target["lines"] = lines
-        
+
 
         target["labels"] = classes
-        
+
         target["image_id"] = image_id
 
         # for conversion to coco api
@@ -77,9 +77,9 @@ def make_coco_transforms(image_set, args):
         T.Normalize([0.538, 0.494, 0.453], [0.257, 0.263, 0.273])
     ])
 
-    scales = [480, 512, 544, 576, 608, 640, 672, 680, 690, 704, 736, 768, 788, 800]
-    test_size = 1100
-    max = 1333 
+    scales = [480, 512, 544, 576, 608, 640, 672, 680, 690, 704, 736, 768, 788, 800]/2
+    test_size = 1100/2
+    max = 1334/2
 
     if args.eval:
         return T.Compose([
@@ -122,7 +122,7 @@ def build(image_set, args):
         PATHS = {
             "train": (root / "train2017", root / "annotations" / f'{mode}_train2017.json'),
             "val": (root / "val2017", root / "annotations" / f'{mode}_val2017.json'),
-        }    
+        }
     else:
         PATHS = {
             "train": (root / "train2017", root / "annotations" / f'{mode}_train2017.json'),
