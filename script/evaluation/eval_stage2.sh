@@ -17,11 +17,11 @@ for ((i=0;i<${#epoch[@]};++i)); do
     mkdir  -p $output/score/eval-sAP-york
     mkdir  -p $output/score/eval-fscore-york
 
-    PYTHONPATH=$PYTHONPATH:./src \
-    python ./src/main.py --coco_path data/wireframe_processed \
-    --output_dir $output --LETRpost --backbone resnet101 --resume $output/checkpoints/checkpoint0${epoch[i]}.pth \
-    --batch_size 1 ${@:2}  --num_queries 1000 \
-    --eval --benchmark --dataset val --append_word ${epoch[i]} --no_aux_loss  
+    #PYTHONPATH=$PYTHONPATH:./src \
+    #python ./src/main.py --coco_path data/wireframe_processed \
+    #--output_dir $output --LETRpost --backbone resnet101 --resume $output/checkpoints/checkpoint0${epoch[i]}.pth \
+    #--batch_size 1 ${@:2}  --num_queries 1000 \
+    #--eval --benchmark --dataset val --append_word ${epoch[i]} --no_aux_loss  
 
     PYTHONPATH=$PYTHONPATH:./src 
     python ./src/main.py --coco_path data/york_processed \

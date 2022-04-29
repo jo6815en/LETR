@@ -74,9 +74,15 @@ def main():
             return anno_id
 
         if mode == "val":
-            for img in dataset:
+            for img in dataset[::2]:
                 anno_id = handle(img, image_id, anno_id, batch)
                 image_id += 1
+
+        if mode == "train":
+            for img in dataset[1::2]:
+                anno_id = handle(img, image_id, anno_id, batch)
+                image_id += 1
+
 
         os.makedirs(os.path.join(tar_dir, "annotations"), exist_ok=True)
         anno_path = os.path.join(tar_dir, "annotations", f"lines_{batch}.json")
