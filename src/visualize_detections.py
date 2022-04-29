@@ -97,7 +97,7 @@ class Resize(object):
 
 
 # obtain checkpoints
-checkpoint = torch.load('../exp/res50_stage2_focal/checkpoints/checkpoint0024.pth', map_location='cpu')
+checkpoint = torch.load('../exp/tree_res50_stage1/checkpoints/checkpoint.pth', map_location='cpu')
 
 # load model
 args = checkpoint['args']
@@ -112,7 +112,7 @@ model.eval()
 
 
 # load image
-raw_img = plt.imread('../figures/1032.png')
+raw_img = plt.imread('../figures/tree.png')
 h, w = raw_img.shape[0], raw_img.shape[1]
 orig_size = torch.as_tensor([int(h), int(w)])
 
@@ -134,9 +134,9 @@ plt.imshow(raw_img)
 # In[34]:
 
 
-outputs = model(inputs)[0]
+#outputs = model(inputs)[0]
 
-#outputs = model(inputs)
+outputs = model(inputs)
 #print(outputs)
 
 
@@ -154,9 +154,9 @@ lines = out_line * scale_fct[:, None, :]
 lines = lines.view(1000, 2, 2)
 lines = lines.flip([-1])# this is yxyx format
 scores = scores.detach().numpy()
-keep = scores >= 0.5
+keep = scores >= 0.000001
 keep = keep.squeeze()
-lines = lines[keep]
+#lines = lines[keep]
 lines = lines.reshape(lines.shape[0], -1)
 
 
