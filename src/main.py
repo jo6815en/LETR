@@ -109,26 +109,38 @@ def main(args):
         else:
             checkpoint = torch.load(args.resume, map_location='cpu')
 
-            # this is to compromise old implementation 
+            # this is to compromise loading 2-stage model into 1-stage model 
             new_state_dict = {}
-            for k in checkpoint['model']:
-                if "bbox_embed" in k:
-                    print("bbox_embed from OLD implementation has been replaced with lines_embed")
-                    new_state_dict["lines_embed."+'.'.join(k.split('.')[1:])] = checkpoint['model'][k] 
-                else:
-                    new_state_dict[k] = checkpoint['model'][k]
+            for k, v in checkpoint['model'].items():
+                if not args.LETRpost:
+                    if k.startswith('letr.'):
+                        k = k[5:]
+                    else:
+                        continue  # discard everything that is not part of the stage-1 letr submodel
+                new_state_dict[k] = v
 
             # compare resume model and current model
-            current_param = [n for n,p in model_without_ddp.named_parameters()]
-            current_buffer = [n for n,p in model_without_ddp.named_buffers()]
+            current_param = {n: p for n,p in model_without_ddp.named_parameters()}
+            current_buffer = {n: p for n,p in model_without_ddp.named_buffers()}
             load_param = new_state_dict.keys()
+
             #for p in load_param:
                 #if p not in current_param and p not in current_buffer:
                     #print(p, 'not been loaded to current model. Strict == False?')
             for p in current_param:
                 if p not in load_param:
                     print(p, 'is a new parameter. Not found from load dict.')
-            
+            for p in load_param:
+                if p not in current_param and p not in current_buffer and not p.startswith('backbone'):
+                    print(p, 'NOT appear in current model.  ')
+
+            if current_param['lines_embed.layers.2.weight'].shape != new_state_dict['lines_embed.layers.2.weight']:
+                new_state_dict["lines_embed.layers.2.weight"] = torch.cat((new_state_dict["lines_embed.layers.2.weight"], new_state_dict["lines_embed.layers.2.weight"]), 0)
+                new_state_dict["lines_embed.layers.2.bias"] = torch.cat((new_state_dict["lines_embed.layers.2.bias"], new_state_dict["lines_embed.layers.2.bias"]), 0)
+                if args.LETRpost:
+                    new_state_dict["letr.lines_embed.layers.2.weight"] = torch.cat((new_state_dict["letr.lines_embed.layers.2.weight"], new_state_dict["letr.lines_embed.layers.2.weight"]), 0)
+                    new_state_dict["letr.lines_embed.layers.2.bias"] = torch.cat((new_state_dict["letr.lines_embed.layers.2.bias"], new_state_dict["letr.lines_embed.layers.2.bias"]), 0)
+                
             # load model
             model_without_ddp.load_state_dict(new_state_dict)
 

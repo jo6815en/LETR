@@ -39,7 +39,7 @@ class LETRstack(nn.Module):
 
         # output layer
         self.class_embed = nn.Linear(hidden_dim, 1 + 1)
-        self.lines_embed = MLP(hidden_dim, hidden_dim, 4, 3)
+        self.lines_embed = MLP(hidden_dim, hidden_dim, 8, 3)
 
 
         self.aux_loss=args.aux_loss

@@ -97,7 +97,7 @@ class Resize(object):
 
 
 # obtain checkpoints
-checkpoint = torch.load('../exp/tree_res50_stage1/checkpoints/checkpoint.pth', map_location='cpu')
+checkpoint = torch.load('../exp/test_weighted2/checkpoints/checkpoint.pth', map_location='cpu')
 
 # load model
 args = checkpoint['args']
@@ -134,9 +134,9 @@ plt.imshow(raw_img)
 # In[34]:
 
 
-#outputs = model(inputs)[0]
+outputs = model(inputs)[0]
 
-outputs = model(inputs)
+#utputs = model(inputs)
 #print(outputs)
 
 
@@ -149,14 +149,16 @@ out_logits, out_line = outputs['pred_logits'].detach(), outputs['pred_lines'].de
 prob = F.softmax(out_logits, -1)
 scores, labels = prob[..., :-1].max(-1)
 img_h, img_w = orig_size.unbind(0)
-scale_fct = torch.unsqueeze(torch.stack([img_w, img_h, img_w, img_h], dim=0), dim=0)
+scale_fct = torch.unsqueeze(torch.stack([img_w, img_h, img_w, img_h, img_w, img_h, img_w, img_h], dim=0), dim=0)
+print(out_line.size())
+print(scale_fct[:,None,:])
 lines = out_line * scale_fct[:, None, :]
-lines = lines.view(1000, 2, 2)
+lines = lines.view(1000, 4, 2)
 lines = lines.flip([-1])# this is yxyx format
 scores = scores.detach().numpy()
-keep = scores >= 0.000001
+keep = scores >= 0.55
 keep = keep.squeeze()
-#lines = lines[keep]
+lines = lines[keep]
 lines = lines.reshape(lines.shape[0], -1)
 
 
@@ -170,23 +172,27 @@ lines = lines.reshape(lines.shape[0], -1)
 fig = plt.figure()
 plt.imshow(raw_img)
 for tp_id, line in enumerate(lines):
-    y1, x1, y2, x2 = line # this is yxyx
+    y1, x1, y2, x2, y3, x3, y4, x4 = line # this is yxyx
     p1 = (x1, y1)
     p2 = (x2, y2)
+    p3 = (x3, y3)
+    p4 = (x4, y4)
     plt.plot([p1[0], p2[0]], [p1[1], p2[1]], linewidth=1.5, color='darkorange', zorder=1)
+    plt.plot([p3[0], p4[0]], [p3[1], p4[1]], linewidth=1.5, color='blue', zorder=1)
 plt.axis('off')
 
 
-#plt.savefig("../figures/demo_result.png", dpi=300, bbox_inches='tight', pad_inches = 0)
+plt.savefig("../figures/demo_result_new_test_weighted_train.png", dpi=300, bbox_inches='tight', pad_inches = 0)
 #plt.close(fig)
 plt.show()
 
+print("After linecode")
 
 # In[38]:
 
 
 plt.show()
-
+#plt.waitforbuttonpress()
 
 # In[ ]:
 

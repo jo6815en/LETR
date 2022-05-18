@@ -7,7 +7,7 @@ from einops import rearrange
 from datasets.coco import build
 
 args = Namespace(
-    coco_path="/Users/s0000960/data/forestseg_lth/forestseg_data/datasets/coco_style",
+    coco_path="/workspace/data/trees",
     eval=False,
 
 )
@@ -33,8 +33,8 @@ for img, anno in dataset:
         p1 = (x1, y1)
         p2 = (x2, y2)
         plt.plot([p1[0], p2[0]], [p1[1], p2[1]], linewidth=1.5, color='darkorange', zorder=1)
-    plt.show()
-
+    #plt.show()
+    plt.savefig('hej.png')
 
 
 

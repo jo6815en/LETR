@@ -39,13 +39,15 @@ class ConvertCocoPolysToMask(object):
 
         anno = [obj for obj in anno]
 
-        lines = [obj["line"] for obj in anno]
-        lines = torch.as_tensor(lines, dtype=torch.float32).reshape(-1, 4)
+        lines = [obj["line_left"] + obj["line_right"] for obj in anno]
+        lines = torch.as_tensor(lines, dtype=torch.float32).reshape(-1, 8)
 
-        lines[:, 2:] += lines[:, :2] #xyxy
+        lines[:, 2:4] += lines[:, 0:2] #xyxy
+        lines[:, 6:8] += lines[:, 4:6] #xyxy
 
         lines[:, 0::2].clamp_(min=0, max=w)
         lines[:, 1::2].clamp_(min=0, max=h)
+
 
         classes = [obj["category_id"] for obj in anno]
         classes = torch.tensor(classes, dtype=torch.int64)
@@ -77,17 +79,25 @@ def make_coco_transforms(image_set, args):
         T.Normalize([0.538, 0.494, 0.453], [0.257, 0.263, 0.273])
     ])
 
-    scales = [480, 512, 544, 576, 608, 640, 672, 680, 690, 704, 736, 768, 788, 800]/2
-    test_size = 1100/2
-    max = 1334/2
+    #scales = [480, 512, 544, 576, 608, 640, 672, 680, 690, 704, 736, 768, 788, 800]
+    scales = [480, 512, 544]
+    #scales = [200]
+
+    test_size = 1100
+    max = 1333
 
     if args.eval:
         return T.Compose([
-            T.RandomResize([test_size], max_size=max),
+            T.RandomResize(scales, max_size=max),
+            T.ColorJitter(),
             normalize,
         ])
     else:
         if image_set == 'train':
+            return T.Compose([
+                T.RandomResize(scales, max_size=max),
+                normalize,
+            ])
             return T.Compose([
                 T.RandomSelect(
                     T.RandomHorizontalFlip(),

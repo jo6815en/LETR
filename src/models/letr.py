@@ -16,6 +16,49 @@ from .transformer import build_transformer
 from .letr_stack import LETRstack
 import numpy as np
 
+
+class LETR_headless(nn.Module):
+    """ This is the LETR module that performs object detection """
+    def __init__(self, backbone, transformer, num_classes, num_queries, args, aux_loss=False):
+        super().__init__()
+        self.num_queries = num_queries
+        self.transformer = transformer
+        hidden_dim = transformer.d_model
+        self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+
+        #self.lines_embed  =  MLP(hidden_dim, hidden_dim, 8, 3)
+        self.query_embed = nn.Embedding(num_queries, hidden_dim)
+
+        channel = [256, 512, 1024, 2048]
+        self.input_proj = nn.Conv2d(channel[args.layer1_num], hidden_dim, kernel_size=1)
+
+        self.backbone = backbone
+        self.aux_loss = aux_loss
+        self.args = args
+
+    def forward(self, samples, postprocessors=None, targets=None, criterion=None):
+        if isinstance(samples, (list, torch.Tensor)):
+            samples = nested_tensor_from_tensor_list(samples)
+
+        features, pos = self.backbone(samples)
+
+        num = self.args.layer1_num
+        src, mask = features[num].decompose()
+        assert mask is not None
+        hs = self.transformer(self.input_proj(src), mask, self.query_embed.weight, pos[num])[0]
+
+        outputs_class = self.class_embed(hs)
+        outputs_coord = outputs_class
+        #outputs_coord = self.lines_embed(hs).sigmoid()
+        out = {'pred_logits': outputs_class[-1], 'pred_lines': outputs_coord[-1]}
+        if self.aux_loss:
+            out['aux_outputs'] = self._set_aux_loss(outputs_class, outputs_coord)
+        return out
+
+    @torch.jit.unused
+    def _set_aux_loss(self, outputs_class, outputs_coord):
+        return [{'pred_logits': a, 'pred_lines': b} for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
+
 class LETR(nn.Module):
     """ This is the LETR module that performs object detection """
     def __init__(self, backbone, transformer, num_classes, num_queries, args, aux_loss=False):
@@ -25,7 +68,7 @@ class LETR(nn.Module):
         hidden_dim = transformer.d_model
         self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
 
-        self.lines_embed  =  MLP(hidden_dim, hidden_dim, 4, 3)
+        self.lines_embed  =  MLP(hidden_dim, hidden_dim, 8, 3)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
 
         channel = [256, 512, 1024, 2048]
@@ -134,27 +177,6 @@ class SetCriterion(nn.Module):
         losses = {'cardinality_error': card_err}
         return losses
 
-    def loss_lines_POST(self, outputs, targets, num_items, origin_indices=None):
-        assert 'POST_pred_lines' in outputs
-
-        if outputs['POST_pred_lines'].shape[1] == 1000:
-            idx = self._get_src_permutation_idx(origin_indices)
-
-            src_lines = outputs['POST_pred_lines'][idx]
-            
-        else:
-            src_lines = outputs['POST_pred_lines'].squeeze(0)
-
-
-        target_lines = torch.cat([t['lines'][i] for t, (_, i) in zip(targets, origin_indices)], dim=0)
-
-        loss_line = F.l1_loss(src_lines, target_lines, reduction='none')
-
-        losses = {}
-        losses['loss_line'] = loss_line.sum() / num_items
-
-        return losses
-
     def loss_lines(self, outputs, targets, num_items, origin_indices=None):
         assert 'pred_lines' in outputs
 
@@ -164,9 +186,12 @@ class SetCriterion(nn.Module):
         target_lines = torch.cat([t['lines'][i] for t, (_, i) in zip(targets, origin_indices)], dim=0)
 
         loss_line = F.l1_loss(src_lines, target_lines, reduction='none')
-
+        #loss_line = F.l2_loss(src_lines, target_lines, reduction='none')
+        temp_width = torch.abs(target_lines[:,4] - target_lines[:,0])**4
+        temp_width = temp_width/(torch.max(temp_width) +  0.000000001)
+        loss_line = loss_line * temp_width[:, None]
         losses = {}
-        losses['loss_line'] = loss_line.sum() / num_items
+        losses['loss_line'] = 10*loss_line.sum() / num_items
 
         return losses
 
@@ -266,7 +291,7 @@ class PostProcess_Line(nn.Module):
             # convert to [x0, y0, x1, y1] format
             img_h, img_w = target_sizes.unbind(1)
 
-            scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=1)
+            scale_fct = torch.stack([img_w, img_h, img_w, img_h, img_w, img_h, img_w, img_h], dim=1)
             lines = out_line * scale_fct[:, None, :]
 
             results = [{'scores': s, 'labels': l, 'lines': b} for s, l, b in zip(scores, labels, lines)]
@@ -282,7 +307,7 @@ class PostProcess_Line(nn.Module):
             # convert to [x0, y0, x1, y1] format
             img_h, img_w = target_sizes.unbind(1)
 
-            scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=1)
+            scale_fct = torch.stack([img_w, img_h, img_w, img_h, img_w, img_h, img_w, img_h], dim=1)
             lines = out_line * scale_fct[:, None, :]
 
             results = [{'scores': s, 'labels': l, 'lines': b} for s, l, b in zip(scores, labels, lines)]
@@ -291,7 +316,7 @@ class PostProcess_Line(nn.Module):
             for dic in outputs:
                 lines = dic['lines']
                 img_h, img_w = target_sizes.unbind(1)
-                scale_fct = torch.stack([img_w, img_h, img_w, img_h], dim=1)
+                scale_fct = torch.stack([img_w, img_h, img_w, img_h, img_w, img_h, img_w, img_h], dim=1)
                 scaled_lines = lines * scale_fct
                 results.append({'labels': dic['labels'], 'lines': scaled_lines, 'image_id': dic['image_id']})
         else:

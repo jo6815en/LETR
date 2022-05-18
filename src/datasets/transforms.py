@@ -85,7 +85,7 @@ def hflip(image, target):
     
     if "lines" in target:
         lines = target["lines"]   
-        lines = lines[:, [2, 3, 0, 1]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
+        lines = lines[:, [2, 3, 0, 1, 6, 7, 4, 5]] * torch.as_tensor([-1, 1, -1, 1, -1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0, w, 0, w, 0])
         target["lines"] = lines
 
 
@@ -103,9 +103,9 @@ def vflip(image, target):
         lines = target["lines"]
 
         # in dataset, we assume if two points with same x coord, we assume first point is the upper point
-        lines = lines * torch.as_tensor([1, -1, 1, -1]) + torch.as_tensor([0, h, 0, h])
+        lines = lines * torch.as_tensor([1, -1, 1, -1, 1, -1, 1, -1]) + torch.as_tensor([0, h, 0, h, 0, h, 0, h])
         vertical_line_idx = (lines[:, 0] == lines[:, 2])
-        lines[vertical_line_idx] = torch.index_select(lines[vertical_line_idx], 1, torch.tensor([2,3,0,1]))
+        lines[vertical_line_idx] = torch.index_select(lines[vertical_line_idx], 1, torch.tensor([2,3,0,1, 6, 7, 4, 5]))
         target["lines"] = lines
 
     return flipped_image, target
@@ -204,7 +204,7 @@ def resize(image, target, size, max_size=None):
     
     if "lines" in target:
         lines = target["lines"]
-        scaled_lines = lines * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
+        scaled_lines = lines * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height, ratio_width, ratio_height, ratio_width, ratio_height])
         target["lines"] = scaled_lines
     h, w = size
     target["size"] = torch.tensor([h, w])
@@ -464,7 +464,7 @@ class Normalize(object):
 
         if "lines" in target:
             lines = target["lines"]
-            lines = lines / torch.tensor([w, h, w, h], dtype=torch.float32)
+            lines = lines / torch.tensor([w, h, w, h, w, h, w, h], dtype=torch.float32)
             target["lines"] = lines
 
         return image, target
