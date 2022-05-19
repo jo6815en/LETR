@@ -203,15 +203,16 @@ def main(args):
                     'args': args,
                 }, checkpoint_path)
 
-        test_stats = evaluate(model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir, args)
+        if epoch % 10 == 0:
+            test_stats = evaluate(model, criterion, postprocessors, data_loader_val, base_ds, device, args.output_dir, args)
 
-        log_stats = {**{f'train_{k}': format(v, ".6f") for k, v in train_stats.items()},
-                     **{f'test_{k}': format(v, ".6f") for k, v in test_stats.items()},
-                     'epoch': epoch, 'n_parameters': n_parameters}
+            log_stats = {**{f'train_{k}': format(v, ".6f") for k, v in train_stats.items()},
+                         **{f'test_{k}': format(v, ".6f") for k, v in test_stats.items()},
+                         'epoch': epoch, 'n_parameters': n_parameters}
 
-        if args.output_dir and utils.is_main_process():
-            with (output_dir / "log.txt").open("a") as f:
-                f.write(json.dumps(log_stats) + "\n")
+            if args.output_dir and utils.is_main_process():
+                with (output_dir / "log.txt").open("a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
