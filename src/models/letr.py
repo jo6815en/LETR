@@ -177,6 +177,21 @@ class SetCriterion(nn.Module):
         losses = {'cardinality_error': card_err}
         return losses
 
+    def _projection_loss(self, pred_line, target_line):
+        pred_1, pred_2 = pred_line[:, :2], pred_line[:, 2:]
+        target_1, target_2 = target_line[:, :2], target_line[:, 2:]
+        line_vector = target_2 - target_1
+        line_vector /= line_vector.norm(dim=1, keepdim=True)
+
+        loss = torch.zeros_like(pred_line[:, 0])
+        for pred, target in ((pred_1, target_1), (pred_2, target_2)):
+            w1 = pred - target
+            q1 = (line_vector*w1).sum(dim=-1)*line_vector + target
+            parallel_component = (q1-target).norm(dim=1)
+            orthogonal_component = (q1 - pred).norm(dim=1)
+            loss += parallel_component + 10 * orthogonal_component
+        return loss
+
     def loss_lines(self, outputs, targets, num_items, origin_indices=None):
         assert 'pred_lines' in outputs
 
@@ -194,6 +209,7 @@ class SetCriterion(nn.Module):
         losses['loss_line'] = loss_line.sum() / num_items
 
         return losses
+
 
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices

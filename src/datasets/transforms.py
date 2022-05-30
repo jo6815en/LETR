@@ -31,49 +31,56 @@ def crop(image, target, region):
 
     if "lines" in target:
         lines = target["lines"]
-        cropped_lines = lines - torch.as_tensor([j, i, j, i])
-        
-        eps = 1e-12
+        cropped_lines = lines - torch.as_tensor([j, i, j, i, j, i, j, i])
 
-        # In dataset, we assume the left point has smaller x coord
-        remove_x_min = cropped_lines[:, 2] < 0
-        remove_x_max = cropped_lines[:, 0] > w
-        remove_x = torch.logical_or(remove_x_min, remove_x_max)
-        keep_x = ~remove_x
+        def _should_keep(coord_1, coord_2, dim):
+            remove_min = torch.logical_and(coord_1 < 0, coord_2 < 0)
+            remove_max = torch.logical_and(coord_1 > dim, coord_2 > dim)
+            remove = torch.logical_or(remove_min, remove_max)
+            keep_mask = ~remove
+            return keep_mask
 
-        # there is no assumption on y, so remove lines that have both y coord out of bound
-        remove_y_min = torch.logical_and(cropped_lines[:, 1] < 0, cropped_lines[:, 3] < 0)
-        remove_y_max = torch.logical_and(cropped_lines[:, 1] > h, cropped_lines[:, 3] > h)
-        remove_y = torch.logical_or(remove_y_min, remove_y_max)
-        keep_y = ~remove_y
+        keep_line1_x = _should_keep(cropped_lines[:, 0], cropped_lines[:, 2], w)
+        keep_line1_y = _should_keep(cropped_lines[:, 1], cropped_lines[:, 3], h)
+        keep_line2_x = _should_keep(cropped_lines[:, 4], cropped_lines[:, 6], w)
+        keep_line2_y = _should_keep(cropped_lines[:, 5], cropped_lines[:, 7], h)
 
-        keep = torch.logical_and(keep_x, keep_y)
+        keep_line1 = torch.logical_and(keep_line1_x, keep_line1_y)
+        keep_line2 = torch.logical_and(keep_line2_x, keep_line2_y)
+        keep = torch.logical_and(keep_line1, keep_line2)
         cropped_lines = cropped_lines[keep]
         clamped_lines = torch.zeros_like(cropped_lines)
 
         for i,line in enumerate(cropped_lines):
-            x1, y1, x2, y2 = line
-            slope = (y2 - y1) / (x2 - x1 + eps)
-            if x1 < 0:
-                x1 = 0
-                y1 = y2 + (x1 - x2) * slope
-            if y1 < 0:
-                y1 = 0
-                x1 = x2 - (y2 - y1) / slope
-            if x2 > w:
-                x2 = w
-                y2 = y1 + (x2 - x1) * slope
-            if y2 > h:
-                y2 = h
-                x2 = x1 + (y2 - y1) / slope
-
-            clamped_lines[i, :] = torch.tensor([x1, y1, x2, y2])
+            x1, y1, x2, y2, x3, y3, x4, y4 = line
+            x1, y1, x2, y2 = _get_clamped_points(x1, y1, x2, y2, w, h)
+            x2, y2, x1, y1 = _get_clamped_points(x2, y2, x1, y1, w, h)
+            x3, y3, x4, y4 = _get_clamped_points(x3, y3, x4, y4, w, h)
+            x4, y4, x3, y3 = _get_clamped_points(x4, y4, x3, y3, w, h)
+            clamped_lines[i, :] = torch.tensor([x1, y1, x2, y2, x3, y3, x4, y4])
 
         target["lines"] = clamped_lines
         
     for field in fields:
         target[field] = target[field][keep]
     return cropped_image, target
+
+
+def _get_clamped_points(x1, y1, x2, y2, w, h):
+    slope = (y2 - y1) / (x2 - x1 + 1e-12)
+    if x1 < 0:
+        x1 = 0
+        y1 = y2 + (x1 - x2) * slope
+    if y1 < 0:
+        y1 = 0
+        x1 = x2 - (y2 - y1) / slope
+    if x2 > w:
+        x2 = w
+        y2 = y1 + (x2 - x1) * slope
+    if y2 > h:
+        y2 = h
+        x2 = x1 + (y2 - y1) / slope
+    return x1, y1, x2, y2
 
 
 def hflip(image, target):
@@ -84,10 +91,9 @@ def hflip(image, target):
     target = target.copy()
     
     if "lines" in target:
-        lines = target["lines"]   
-        lines = lines[:, [2, 3, 0, 1, 6, 7, 4, 5]] * torch.as_tensor([-1, 1, -1, 1, -1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0, w, 0, w, 0])
+        lines = target["lines"]
+        lines = lines[:, [4, 5, 6, 7, 0, 1, 2, 3]] * torch.as_tensor([-1, 1, -1, 1, -1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0, w, 0, w, 0])
         target["lines"] = lines
-
 
     return flipped_image, target
 
@@ -101,11 +107,8 @@ def vflip(image, target):
 
     if "lines" in target:
         lines = target["lines"]
-
         # in dataset, we assume if two points with same x coord, we assume first point is the upper point
-        lines = lines * torch.as_tensor([1, -1, 1, -1, 1, -1, 1, -1]) + torch.as_tensor([0, h, 0, h, 0, h, 0, h])
-        vertical_line_idx = (lines[:, 0] == lines[:, 2])
-        lines[vertical_line_idx] = torch.index_select(lines[vertical_line_idx], 1, torch.tensor([2,3,0,1, 6, 7, 4, 5]))
+        lines = lines[:, [2,3,0,1,6,7,4,5]] * torch.as_tensor([1, -1, 1, -1, 1, -1, 1, -1]) + torch.as_tensor([0, h, 0, h, 0, h, 0, h])
         target["lines"] = lines
 
     return flipped_image, target
@@ -224,6 +227,15 @@ def pad(image, target, padding):
     if "masks" in target:
         target['masks'] = torch.nn.functional.pad(target['masks'], (0, padding[0], 0, padding[1]))
     return padded_image, target
+
+
+class RandomProjective(object):
+    def __init__(self, size):
+        self.size = size
+
+    def __call__(self, img, target):
+        region = T.RandomCrop.get_params(img, self.size)
+        return crop(img, target, region)
 
 
 class RandomCrop(object):
