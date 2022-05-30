@@ -187,11 +187,11 @@ class SetCriterion(nn.Module):
 
         loss_line = F.l1_loss(src_lines, target_lines, reduction='none')
         #loss_line = F.l2_loss(src_lines, target_lines, reduction='none')
-        temp_width = torch.abs(target_lines[:,4] - target_lines[:,0])**4
-        temp_width = temp_width/(torch.max(temp_width) +  0.000000001)
-        loss_line = loss_line * temp_width[:, None]
+        #temp_width = torch.abs(target_lines[:,4] - target_lines[:,0])
+        #temp_width = temp_width/(torch.max(temp_width) +  0.000000001)
+        #loss_line = loss_line * temp_width[:, None]
         losses = {}
-        losses['loss_line'] = 10*loss_line.sum() / num_items
+        losses['loss_line'] = loss_line.sum() / num_items
 
         return losses
 

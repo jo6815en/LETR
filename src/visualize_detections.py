@@ -97,7 +97,7 @@ class Resize(object):
 
 
 # obtain checkpoints
-checkpoint = torch.load('../exp/test_weighted2/checkpoints/checkpoint.pth', map_location='cpu')
+checkpoint = torch.load('../exp/mandag_test1_stage2_finetune/checkpoints/checkpoint.pth', map_location='cpu')
 
 # load model
 args = checkpoint['args']
@@ -112,7 +112,7 @@ model.eval()
 
 
 # load image
-raw_img = plt.imread('../figures/tree.png')
+raw_img = plt.imread('../figures/tree_val.png')
 h, w = raw_img.shape[0], raw_img.shape[1]
 orig_size = torch.as_tensor([int(h), int(w)])
 
@@ -126,7 +126,7 @@ normalize = Compose([
 img = normalize(raw_img)
 inputs = nested_tensor_from_tensor_list([img])
 plt.axis('off')
-plt.imshow(raw_img)
+#plt.imshow(raw_img)
 
 
 # ## Model Inference
@@ -136,7 +136,7 @@ plt.imshow(raw_img)
 
 outputs = model(inputs)[0]
 
-#utputs = model(inputs)
+#outputs = model(inputs)
 #print(outputs)
 
 
@@ -156,7 +156,7 @@ lines = out_line * scale_fct[:, None, :]
 lines = lines.view(1000, 4, 2)
 lines = lines.flip([-1])# this is yxyx format
 scores = scores.detach().numpy()
-keep = scores >= 0.55
+keep = scores >= 0.1
 keep = keep.squeeze()
 lines = lines[keep]
 lines = lines.reshape(lines.shape[0], -1)
@@ -182,7 +182,7 @@ for tp_id, line in enumerate(lines):
 plt.axis('off')
 
 
-plt.savefig("../figures/demo_result_new_test_weighted_train.png", dpi=300, bbox_inches='tight', pad_inches = 0)
+#plt.savefig("../figures/demo_result_new_test_weighted_train.png", dpi=300, bbox_inches='tight', pad_inches = 0)
 #plt.close(fig)
 plt.show()
 

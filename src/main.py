@@ -134,13 +134,13 @@ def main(args):
                 if p not in current_param and p not in current_buffer and not p.startswith('backbone'):
                     print(p, 'NOT appear in current model.  ')
 
-            if current_param['lines_embed.layers.2.weight'].shape != new_state_dict['lines_embed.layers.2.weight']:
+            if current_param['lines_embed.layers.2.weight'].shape != new_state_dict['lines_embed.layers.2.weight'].shape:
                 new_state_dict["lines_embed.layers.2.weight"] = torch.cat((new_state_dict["lines_embed.layers.2.weight"], new_state_dict["lines_embed.layers.2.weight"]), 0)
                 new_state_dict["lines_embed.layers.2.bias"] = torch.cat((new_state_dict["lines_embed.layers.2.bias"], new_state_dict["lines_embed.layers.2.bias"]), 0)
                 if args.LETRpost:
                     new_state_dict["letr.lines_embed.layers.2.weight"] = torch.cat((new_state_dict["letr.lines_embed.layers.2.weight"], new_state_dict["letr.lines_embed.layers.2.weight"]), 0)
                     new_state_dict["letr.lines_embed.layers.2.bias"] = torch.cat((new_state_dict["letr.lines_embed.layers.2.bias"], new_state_dict["letr.lines_embed.layers.2.bias"]), 0)
-                
+ 
             # load model
             model_without_ddp.load_state_dict(new_state_dict)
 

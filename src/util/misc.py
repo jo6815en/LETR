@@ -407,10 +407,13 @@ def save_on_master(*args, **kwargs):
 
 def init_distributed_mode(args):
     if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
+        print("IN RANK")
         args.rank = int(os.environ["RANK"])
         args.world_size = int(os.environ['WORLD_SIZE'])
+        print(int(os.environ['LOCAL_RANK']))
         args.gpu = int(os.environ['LOCAL_RANK'])
     elif 'SLURM_PROCID' in os.environ:
+        print("IN SLURM_PROCID")
         args.rank = int(os.environ['SLURM_PROCID'])
         args.gpu = args.rank % torch.cuda.device_count()
     else:
@@ -419,7 +422,8 @@ def init_distributed_mode(args):
         return
 
     args.distributed = True
-
+    print("This is the intendeed gpu: ", args.gpu)
+    args.gpu = 0
     torch.cuda.set_device(args.gpu)
     args.dist_backend = 'nccl'
     print('| distributed init (rank {}): {}'.format(
