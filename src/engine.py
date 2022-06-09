@@ -27,7 +27,7 @@ def train_one_epoch(model, criterion, postprocessors, data_loader, optimizer, de
 
     counter = 0
     torch.cuda.empty_cache()
-    for _ in args.train_repeats:
+    for _ in range(args.train_repeats):
         for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
             samples = samples.to(device)
             targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
