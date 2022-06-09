@@ -115,4 +115,6 @@ def get_args_parser():
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--dataset', default='train', type=str, choices=('train', 'val'))
 
+    parser.add_argument('--train_repeats', default=1, type=int)
+
     return parser

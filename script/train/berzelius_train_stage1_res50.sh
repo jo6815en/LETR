@@ -17,9 +17,10 @@ if [ ! -d "$output"  ]; then
     cp -r src/* $output/src/
     cp $0 $output/run.bash
 
-    PYTHONPATH=$PYTHONPATH:./src python src/main.py --coco_path data/trees \
-    --output_dir $output --no_opt --backbone resnet50 --resume  exp/onsdag_test3_finetune/checkpoints/checkpoint.pth \
-    --batch_size 1 --epochs 500 --lr_drop 200 --num_queries 1000  --num_gpus 1   --layer1_num 3 | tee -a $output/history.txt
+    PYTHONPATH=$PYTHONPATH:./src python src/main.py --coco_path /my_data/datasets/coco_style \
+        --output_dir $output --no_opt --backbone resnet50 --resume  exp/res50_stage2_focal/checkpoints/checkpoint0024.pth \
+        --batch_size 8 --epochs 50 --lr_drop 200 --num_queries 1000  --num_gpus 1   --layer1_num 3 \
+        --num_workers=16 --train_repeats=10 | tee -a $output/history.txt
 
 
 else

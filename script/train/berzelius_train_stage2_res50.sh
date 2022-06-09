@@ -17,14 +17,14 @@ if [ ! -d "$output"  ]; then
     cp -r src/* $output/src/
     cp $0 $output/run.bash
 
+
     PYTHONPATH=$PYTHONPATH:./src python -m torch.distributed.launch \
-    --master_port=$((1000 + RANDOM % 9999)) --nproc_per_node=8 --use_env  src/main.py --coco_path data/wireframe_processed \
-    --output_dir $output --LETRpost --backbone resnet50 --layer1_frozen --frozen_weights exp/res50_stage1/checkpoints/checkpoint.pth --no_opt \
-    --batch_size 1 ${@:2} --epochs 300 --lr_drop 120 --num_queries 1000 --num_gpus 8 | tee -a $output/history.txt  
+        --nproc_per_node=1 --use_env  src/main.py --coco_path /my_data/datasets/coco_style \
+        --output_dir $output --LETRpost --backbone resnet50 --layer1_frozen --frozen_weights exp/torsdag_test1_stage1/checkpoints/checkpoint.pth --no_opt \
+        --batch_size 1 ${@:2} --epochs 300 --lr_drop 120 --num_queries 1000 --num_gpus 1 | tee -a $output/history.txt  
 
 else
     echo "folder already exist"
 fi
 
-
-
+# --master_port=$((1000 + RANDOM % 9999))
