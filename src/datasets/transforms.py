@@ -8,12 +8,15 @@ import PIL
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
+import albumentations as A
 import numbers
 import warnings
 from typing import Tuple, List, Optional
 from PIL import Image
 from torch import Tensor
 import math
+
+import matplotlib.pyplot as plt
 
 from util.misc import interpolate
 import numpy as np
@@ -230,12 +233,37 @@ def pad(image, target, padding):
 
 
 class RandomProjective(object):
-    def __init__(self, size):
-        self.size = size
 
     def __call__(self, img, target):
-        region = T.RandomCrop.get_params(img, self.size)
-        return crop(img, target, region)
+        return projective(img,target)
+
+
+def targetToArray(target):
+    lines = target['lines']
+    lines = lines.reshape([lines.size()[0]*4, 2])
+    lines = lines-1e-5
+    lines = torch.clamp(lines, min=0.0)
+    return lines.numpy()
+
+def npArraytoTarget(target, new_points):
+    target['lines'] = torch.tensor(new_points.reshape(-1,8), dtype=torch.float32)
+    return target    
+
+
+def projective(img, target):
+    transform = A.Compose([
+        A.augmentations.geometric.transforms.Perspective((0.1,0.1), p=1.0, keep_size=True, fit_output=True)
+        ], keypoint_params=A.KeypointParams(format='xy', remove_invisible=False))
+    np_array = targetToArray(target)
+    img = np.array(img)
+
+    out = transform(image=img, keypoints=np_array)
+    img = out['image']
+    new_points = np.array(out['keypoints'])
+    
+    target = npArraytoTarget(target, new_points)
+    img = Image.fromarray(img)
+    return img, target
 
 
 class RandomCrop(object):
